@@ -6,6 +6,8 @@ import { useAccount } from "wagmi";
 import Web3 from "web3";
 import jsonInterface from "../Twitter.json";
 import logo from "../assets/images/logo.png";
+import avi1 from "../assets/images/avi1.png";
+import avi2 from "../assets/images/avi2.png";
 import {
   AppBar,
   Avatar,
@@ -14,13 +16,24 @@ import {
   Card,
   CardActions,
   Container,
-  Divider,
+  IconButton,
   Grid,
   Stack,
   TextField,
   Toolbar,
+  Typography,
 } from "@mui/material";
 import Image from "next/image";
+import FavoriteBorderOutlinedIcon from "@mui/icons-material/FavoriteBorderOutlined";
+import FavoriteIcon from "@mui/icons-material/Favorite";
+interface CommentProps {
+  author: string;
+  content: string;
+  id: number;
+  likes: number;
+  timestamp: number;
+  __length__: number;
+}
 
 const ca = "0xcfaddf26c7732888d935717a23bac5af64fe86fc";
 
@@ -29,6 +42,7 @@ const Home: NextPage = () => {
   const [web3, setWeb3] = useState<Web3 | null>(null);
   const [contract, setContract] = useState<any>(null);
   const [post, setPost] = useState<string>("");
+  const [comments, setComments] = useState<CommentProps[]>([]);
 
   async function createTweet() {
     if (!post.length) return;
@@ -41,7 +55,10 @@ const Home: NextPage = () => {
         if (send) {
           setPost("");
         }
-      } catch (error) {}
+      } catch (error) {
+      } finally {
+        displayTweets(address as string);
+      }
     } else {
       alert("Could not find contract. Please try again later.");
     }
@@ -49,8 +66,13 @@ const Home: NextPage = () => {
 
   async function displayTweets(userAddress: string) {
     const tweets = await contract.methods.getAllTweets(userAddress).call();
+    setComments(tweets);
+  }
 
-    console.log(tweets, "********************************");
+  async function likeTweet(userAddress: string, id: number) {
+    const tweet = await contract.methods.likeTweet(userAddress, id).send({
+      from: address,
+    });
   }
 
   useEffect(() => {
@@ -72,6 +94,8 @@ const Home: NextPage = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [address, contract]);
+
+  console.log(comments);
 
   return (
     <Box>
@@ -116,7 +140,7 @@ const Home: NextPage = () => {
             <ConnectButton />
           </Box>
         )}
-        <Card variant="outlined" sx={{ borderRadius: 0, p: 1, mt: 1 }}>
+        <Card variant="outlined" sx={{ borderRadius: 0, p: 2, mt: 1 }}>
           <Grid container>
             <Grid
               item
@@ -128,12 +152,13 @@ const Home: NextPage = () => {
                 height: "100%",
               }}
             >
-              <Avatar>CM</Avatar>
+              <Avatar alt="nftguy1" src="/avi.png" />
             </Grid>
             <Grid item xs={10}>
               <TextField
                 fullWidth
                 multiline
+                rows={3}
                 value={post}
                 onChange={(e) => setPost(e.target.value)}
                 placeholder="Whats going on?!"
@@ -167,11 +192,60 @@ const Home: NextPage = () => {
             </Button>
           </CardActions>
         </Card>
-        <Stack
-          direction="column"
-          mt={1}
-          divider={<Divider variant="inset" />}
-        ></Stack>
+        <Stack direction="column">
+          {comments.map((comment) => (
+            <Card
+              variant="outlined"
+              key={comment.id}
+              sx={{ borderRadius: 0, p: 2 }}
+            >
+              <Grid container>
+                <Grid
+                  item
+                  xs={2}
+                  sx={{
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    height: "100%",
+                  }}
+                >
+                  <Avatar alt="nftguy1" src="/avi2.jpg" />
+                </Grid>
+                <Grid item xs={10}>
+                  <Box p={2}>
+                    <Typography variant="body1">{comment.author}</Typography>
+                    <Typography color="GrayText" variant="body2">
+                      {comment.content}
+                    </Typography>
+                  </Box>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      flex: 1,
+                    }}
+                  >
+                    <IconButton
+                      onClick={() => likeTweet(address as string, comment.id)}
+                    >
+                      <FavoriteBorderOutlinedIcon fontSize="small" />
+                    </IconButton>
+
+                    <Typography
+                      color="GrayText"
+                      sx={{
+                        alignSelf: "center",
+                      }}
+                    >
+                      {comment.likes.toString()}
+                    </Typography>
+                  </Box>
+                </Grid>
+              </Grid>
+              <Grid item xs={12}></Grid>
+            </Card>
+          ))}
+        </Stack>
       </Container>
     </Box>
   );
