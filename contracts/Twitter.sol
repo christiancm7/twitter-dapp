@@ -16,10 +16,10 @@ contract Twitter {
     mapping(address => Tweet[]) public tweets;
 
     event TweetCreated(uint256 id, address indexed _author, string _content);
-    event TweetLiked(address liker, address tweetAuthor, uint256 tweetId, uint256 newLikeCount);
-    event TweetUniked(address unliker, address tweetAuthor, uint256 tweetId, uint256 newLikeCount);
+    event TweetLiked(address indexed liker, address indexed tweetAuthor, uint256 tweetId, uint256 newLikeCount);
+    event TweetUnliked(address indexed unliker, address indexed tweetAuthor, uint256 tweetId, uint256 newLikeCount);
 
-    constructor(){
+    constructor() {
         owner = msg.sender;
     }
 
@@ -29,9 +29,11 @@ contract Twitter {
     }
 
     function createTweet(string memory _tweet) public {
-        require(bytes(_tweet).length <= MAX_TWEET_LENGTH, "Tweet needs to 280 characters or less");
+        require(bytes(_tweet).length <= MAX_TWEET_LENGTH, "Tweet needs to be 280 characters or less");
+        
+        uint256 tweetId = tweets[msg.sender].length;
         Tweet memory newTweet = Tweet({
-            id: tweets[msg.sender].length,
+            id: tweetId,
             author: msg.sender,
             content: _tweet,
             timestamp: block.timestamp,
@@ -40,34 +42,35 @@ contract Twitter {
 
         tweets[msg.sender].push(newTweet);
 
-        emit TweetCreated(newTweet.id, newTweet.author, newTweet.content);
+        emit TweetCreated(tweetId, msg.sender, _tweet);
     }
 
     function getTweet(address _owner, uint _i) public view returns(Tweet memory) {
         return tweets[_owner][_i];
     }
 
-     function getAllTweets(address _owner) public view returns(Tweet[] memory) {
+    function getAllTweets(address _owner) public view returns(Tweet[] memory) {
         return tweets[_owner];
-     }
+    }
 
     function changeTweetLength(uint16 newTweetLength) public onlyOwner {
         MAX_TWEET_LENGTH = newTweetLength;
     }
 
     function likeTweet(address _author, uint256 _id) external {
-        require(tweets[_author][_id].id == _id, "Tweet does not exist");
-        tweets[_author][_id].likes++;
+        require(_id < tweets[_author].length, "Tweet does not exist");
+        Tweet storage tweet = tweets[_author][_id];
+        tweet.likes++;
 
-        emit TweetLiked(msg.sender, _author, _id, tweets[_author][_id].likes);
+        emit TweetLiked(msg.sender, _author, _id, tweet.likes);
     }
 
     function unlikeTweet(address _author, uint256 _id) external {
-        require(tweets[_author][_id].id == _id, "Tweet does not exist");
-        require(tweets[_author][_id].likes > 0, "You cannot unlike a tweet that has not been liked");
-        tweets[_author][_id].likes--;
+        require(_id < tweets[_author].length, "Tweet does not exist");
+        Tweet storage tweet = tweets[_author][_id];
+        require(tweet.likes > 0, "You cannot unlike a tweet that has not been liked");
+        tweet.likes--;
 
-        emit TweetUniked(msg.sender, _author, _id, tweets[_author][_id].likes);
+        emit TweetUnliked(msg.sender, _author, _id, tweet.likes);
     }
-
 }
